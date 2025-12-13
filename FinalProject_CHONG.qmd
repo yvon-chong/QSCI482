@@ -1,0 +1,430 @@
+---
+title: 'Final Project'
+subtitle: 'QSCI 482 WI25'
+format: html
+toc: TRUE
+editor: visual
+author: Yi-Vonne Chong
+---
+
+##### Load Packages
+
+```{r}
+#| label: load-packages 
+#| message: false 
+library(tidyverse)
+library(tidymodels)
+library(car)
+```
+
+##### Import File
+
+```{r}
+shrimp <- read.csv('25087_UNION_FSCS_SVBIO.csv')
+#glimpse(shrimp)
+```
+
+# Abstract
+
+This study examines the difference in mean length between male and female populations of Northern shrimp (*Pandalus borealis*). A Welch’s t-test was performed to compare the mean lengths, as this test is more appropriate for situations involving unequal variances or sample sizes. The null hypothesis, which posited no difference in the mean lengths between the two populations, was rejected based on the statistical analysis. The results revealed a significant difference in mean length (t = -15.615, p-value = 5.532317e-51, which is less than the significance threshold of p = 0.05), indicating that the two populations exhibit distinct length variations. This finding has important implications for understanding the ecological and environmental factors that influence the growth of Northern shrimp. Future research could investigate the underlying factors contributing to these size differences and assess their potential impact on population dynamics.
+
+# Introduction
+
+## Background
+
+![Northern Shrimp *Pandalus borealis*](images/norshrimp.png){width="301"}
+
+Atlantic northern shrimp, *pandalus borealis*, are a cold water crustacean species found in Maine to Massachusetts. They average from 50-100mm in length and are smaller than warm water shrimps. Their tails and bodies are red and their shells are transparent \[1\]. Egg-bearing females move inshore in late fall and winter when nearshore waters have cooled. The females return to offshore waters in the western Gulf of Maine after their eggs hatch during the months of February to April. Larvae and young juveniles remain in nearshore waters for up to 20 months while they develop and after one year, the juveniles migrate to deeper waters where they live in soft mud bottoms (approx 10-30 meters deep).
+
+Northern shrimp are protandrous (sequential) hermaphrodites. The begin life as males and become sexually mature at about 2.5 years and transform to females at around 3.5 years old. The species do not live past age 5.
+
+A healthy Northern shrimp population are an important part of a balanced Gulf of Maine ecosystem. They prey on plankton and bottom-dwelling invertebrates, and they are eaten by important fish species like cod, redfish, silver and white hake.
+
+Gulf of Maine shrimp, as they are also known, are an iconic and culturally important New England cuisine, much like the American Lobster, *Homarus americanus.* However, the Northern shrimp has had a moratorium placed on the fishery since 2014 by the Atlantic States Marine Fisheries Commission and as of 2025, the moratorium remained in place indefinitely \[4\]. The fishery had high landings in the 60's and 70's and was closed in 1978 due to a stock collapse. When it reopened a year later and landings increased before collapsing again in the 80's \[1\]. These surveys were conducted annually to continually monitor and assess the health of the stock.
+
+A study from the University of Maine investigates the correlation between water temperature in the Gulf of Maine and population density \[2\]. The study also investigated the relationship between a northward shift of mature groups and warming waters.
+
+Northern shrimp is not endemic to the Gulf of Maine. It is distributed on the continental shelves throughout most of the North Atlantic. It is speculated that restriction in locations encouraged speciation and diversification that areas with lare temperature gradients and isolation from strong currents prevented free-floating pelagic eggs and pelagic larvae from distribution throughout the Atlantic. A study published in *Molecular Ecology* \[3\] countered that argument, that there is no distinction of genetic difference of Northern shrimp. This study is encouraging as the possibility of rebuilding the fisheries in the Gulf of Maine remains optimistic.
+
+### Data Description
+
+Summary obtained from NOAA:
+
+The Northern Shrimp Survey was initiated in 1983 by the Atlantic States Marine Fisheries Commission (ASMFC) and monitors the relative abundance (number of shrimp), biomass (weight of shrimp), and composition of the northern shrimp stock throughout the Gulf of Maine. The data give an understanding of year class strength and sex stage and maturity of shrimp in the population. The survey focuses its efforts in offshore waters (in depths greater than 50 meters) and is timed to sample both males and females during the summer when they are expected to be offshore. The data it collects forms the basis of the annual northern shrimp assessment, which in turn, is used by fishery managers from Maine, New Hampshire and Massachusetts to set each year’s fishing regulations \[5\].
+
+![Area of Data Collection, Gulf of Maine](images/Screenshot%202025-03-07%20at%2013.03.54.png)
+
+```{r}
+#| code-fold: true
+shrimp |>
+  ggplot(aes(x=ID)) + 
+  geom_histogram(bins=30) +
+    labs(
+    x = "YEAR", 
+    y = "CATCH COUNT", 
+    title = "SURVEY CATCHES SINCE 1994"
+    )
+```
+
+Time series plot of survey catches since 1994. The gap in the graph corresponded to the hiatus in data collection during the 2020 Covid-19 pandemic.
+
+```{r}
+#| code-fold: true
+ggplot(shrimp, (aes(x=LENGTH))) +
+  geom_histogram(bins=30) +
+  labs(
+    title='Histogram of Northern shrimp lengths',
+    y = '')
+```
+
+A histogram of the length of the Northern shrimp is generated to view its distribution. The plot appears to be a normal distribution. Further tests of normality will be performed to determine whether this assumption is valid.
+
+## Hypotheses and Goals:
+
+Statistical tests are performed to test whether the mean lengths of male and female shrimps are the same. A null and alternative hypothesis are defined as follows:
+
+-   Null hypothesis (H~0~): The mean length of male shrimp is the same as the mean length of female shrimp.
+-   Alternative hypothesis (H~A~): The mean length of male and female shrimp are different.
+
+> $H_0:\mu_{male}=\mu_{female}$
+>
+> $H_A:\mu_{male}≠\mu_{female}$
+
+# Statistical Methods
+
+## **Data Processing**
+
+The dataset utilized in this analysis was sourced from the National Oceanic and Atmospheric Administration (NOAA), specifically collected by the Atlantic States Marine Fisheries Commission (ASMFC). The original dataset is publicly available through the government database, accessible at [https://www.fisheries.noaa.gov/inport/item/25087](#0). For the purposes of this project, a subset of the data was created and stored in a dataframe. Any data manipulation, whether intentional or inadvertent, does not alter the original dataset, thereby ensuring the integrity of the source data. All labels used in the dataset were verified against support tables provided within the database.
+
+::: callout-note
+In the interest of transparency and reproducibility, the R code used to generate the plots and conduct statistical tests is included as code blocks, and can be toggled for viewing in the HTML file.
+:::
+
+The labels of particular interest within the dataset are `0`,`1`, and `2`, corresponding to `Unknown`,`Male`, and`Female`, respectively. Since the majority of the survey data was collected from 1994 onwards, and the label **`5`** was assigned to American Lobsters starting in 1995, this specific data point has been excluded from the subdataset. The subsequent code blocks reference the labels as defined by the code descriptions in the `SVBDS_SEX_CODES.csv`support table, which serves as the legend for `SEX` column in the dataset.
+
+```{r}
+#| code-fold: true
+# checking what labels are used for SEX
+unique(shrimp$SEX)
+```
+
+Examining the labels used and checking with the support tables provided for labels legend.
+
+```{r}
+#| code-fold: true
+SEX_CODE <- read.csv('SVDBS_SEX_CODES.csv')
+head(SEX_CODE)
+```
+
+A separate dataframe is created containing columns of interest - `ID(year)`, `Sex`, `Length`, `Weight` and `Maturity` since the rest of the data are not pertinent to our inquiry. The dataset is filtered to select for data labelled `Male` and `Female`. `0` is coded for unknown or unsexed Northern shrimp and since we are interested in whether the mean lengths of the two sexes are the same or different, data labelled `Unknown` are not useful in our goal and excluded in the subdataset.
+
+```{r}
+#| code-fold: true
+# extracting columns of interest from dataset into a dataframe
+# change numerical for SEX category into Male and Female
+# removing rows with NA
+
+shrimpy <- shrimp |>
+  select(ID, SEX, LENGTH, INDWT, MATURITY) |>
+  filter(SEX == 1 | SEX == 2) |>
+  mutate(SEX = ifelse(SEX==1, 'Male','Female')) |>
+  drop_na()
+```
+
+The distribution observed in the previous histogram appeared to be approximately normal, with a potential indication of bimodality due to a secondary peak. To enhance visual context and facilitate a clearer understanding of the gender-based differences, the distributions of lengths for male and female individuals are overlaid in the plot below. Upon initial inspection, the means of the two sexes appear to be similar, although there is a higher density of male shrimps.
+
+```{r}
+#| code-fold: true
+ggplot(shrimpy, (aes(x=LENGTH, color=SEX, fill=SEX))) +
+  geom_density(alpha=0.5) +
+  labs(
+    title='Distribution of Male and Female Northern shrimp',
+    y = 'Density'
+  )
+```
+
+The relationship between weight and length for male and female shrimp is illustrated in the following plot. For female shrimp, the relationship between length and weight appears to increase linearly, whereas for male shrimp, it follows a logarithmic pattern. While further investigation into these relationships would be valuable, it is beyond the scope of the current analysis.
+
+```{r}
+#| code-fold: true
+ggplot(shrimpy, aes(x=INDWT, y=LENGTH, color=SEX)) +
+  geom_point(alpha=0.5) +
+  labs(
+    title='Relationship between weight and length of Northern shrimp'
+  )
+```
+
+## **Statistical Analysis and Results**
+
+To compare the mean lengths between the male and female populations, an independent two-sample t-test is proposed to test the null hypothesis that there is no difference in the mean lengths between the two groups. Before conducting the t-test, preliminary tests are performed to assess the assumptions underlying the analysis. Specifically, tests for normality, such as the Shapiro-Wilk test, are carried out to determine whether the data for each group follow a normal distribution. Additionally, an assessment of equal variances is performed using tests like Levene's test or an F-test. These preliminary checks are critical in deciding whether to use the standard independent t-test (assuming equal variances) or Welch's t-test (which does not assume equal variances). A significance level of $\alpha = 0.05$ is chosen, meaning that a p-value less than 0.05 will be considered statistically significant, providing evidence to reject the null hypothesis in favor of the alternative hypothesis, which suggests a difference in the mean lengths between male and female shrimp.
+
+### Summary Statistics
+
+Below are the key statistical measures for the dataset, including the mean, variance, and standard deviation, along with a boxplot for visual representation of the data distribution. Additionally, another boxplot is provided to illustrate the differences according to sex (male and female) in northern shrimp.
+
+```{r}
+#| code-fold: true
+summary(shrimpy$LENGTH) # Quartile
+
+shrimpy |>
+  summarize(mean = mean(LENGTH),
+            sd = sd(LENGTH),
+            n = n())
+
+boxplot(shrimpy$LENGTH,
+        main='Boxplot of Northern shrimp length')
+```
+
+```{r}
+#| code-fold: true
+shrimpy |>
+  ggplot(aes(x=SEX, y=LENGTH, fill=SEX))+
+  geom_boxplot(alpha=0.5) +
+  labs(
+    title='Boxplot of Northern Shrimp Lengths according to SEX'
+  )
+```
+
+### Statistical Test
+
+A t-test is employed to assess whether there is a significant difference between the means of two groups. Several variations of the t-test exist, and in this context, a two-sample t-test is utilized. Specifically, we can apply either the Student's t-test or Welch's t-test, depending on the assumptions regarding variance equality between the groups.
+
+According to the Central Limit Theorem, as the sample size increases, the sampling distribution of the sample mean approaches a normal distribution, regardless of the shape of the population distribution. So, even if the underlying population is not perfectly normal, a large sample size (such as 7000) ensures that the t-test remains valid. This is one of the reasons why a t-test can be used even with large sample sizes.
+
+While the t-test assumes normality, it is relatively robust to violations of this assumption, especially when the sample size is large. With a sample size of 7000+, any small deviations from normality are unlikely to affect the results significantly. The large sample size helps the test remain effective, as the sample mean will more likely approximate the true population mean.
+
+As the sample size increases, the standard error of the mean decreases, making it easier to detect small differences between groups. Even if the population variance is not known or the distribution is not perfectly normal, the large sample size reduces the potential influence of outliers or skewness on the results. With a large sample size, the estimates of population parameters (such as the mean) become more precise, leading to more reliable and accurate results in hypothesis testing.
+
+The assumptions for performing a t-test are as follows:
+
+-   data points must be independent of each other
+
+-   data follows a normal distribution
+
+-   data is continuous
+
+-   data is randomly sampled from the population
+
+### Testing for Normality
+
+A Q-Q (Quantile-Quantile) plot is generated to assess whether the dataset follows a normal distribution. It compares the quantiles of the observed data against the quantiles of the expected distribution. If the data is normally distributed, the points on the Q-Q plot will lie approximately along a straight line.
+
+```{r}
+#| code-fold: true
+shrimpy |>
+  ggplot(aes(sample=LENGTH)) + 
+    stat_qq() +
+    stat_qq_line() +
+  labs(
+     title='QQ Plot to test for Normality',
+     x='Theoretical Quantiles',
+     y='Sample Quantiles'
+  )
+ 
+```
+
+The values of the data points largely fall along the 1:1 line in the plot, suggesting a normal distribution. Given that the sample size of the dataset is 7086, which is sufficiently large, the Central Limit Theorem can be invoked to assert that the distribution of the sample approximates normality.
+
+A Shapiro-Wilk test was conducted to formally assess normality, but an error occurred due to the large sample size of the subset. The Shapiro-Wilkes test in R is limited to handling a maximum of 5000 data points. Therefore, the Shapiro-Wilkes test was not performed because the sample size exceeded the test’s capacity.
+
+### Testing for Equal Variances
+
+The data appears to follow a normal distribution, as indicated by the Q-Q plot and supported by the Central Limit Theorem. To determine which t-test to apply—Student's t-test or Welch's t-test—a preliminary F-test is conducted to assess whether the variances between the two groups are equal.
+
+$$
+F=\frac{s^2_1}{s^2_2}
+$$
+
+Statistics summary:
+
+```{r}
+#| code-fold: true
+n_male <- shrimpy |>
+  group_by(SEX) |>
+  summarize(
+    variance = var(LENGTH),
+    stdvar = sd(LENGTH),
+    count =n()
+  )
+
+n_male
+
+fstat <- n_male$variance[1]/n_male$variance[2]
+
+pvalue <- pf(fstat,  4027-1, 3059-1, lower.tail=FALSE)
+```
+
+The ratio of the two variances is approximately `r round(fstat,3)` . Typically, a ratio below 3 suggests that the variances can be considered equal. An F-test is conducted with a significance level of α=0.05. The resulting p-value is `r pvalue`, and based on this result, the null hypothesis that the variances are equal is rejected. Consequently, the Welch's two-sample t-test will be performed.
+
+### Welch's t-test
+
+```{r}
+#| code-fold: true
+#extracting data for male and female shrimp into vectors instead of dataframe
+male <- shrimpy |>
+  filter(SEX == "Male") |>
+  pull(LENGTH)
+
+female <- shrimpy |>
+  filter(SEX == "Female") |>
+  pull(LENGTH)
+
+#conducting the t-test
+t.test(male, female, alternative='two.sided', paired=FALSE, var.equal=FALSE, conf.level=0.95)
+```
+
+This output suggests a statistically significant difference between the means of the two groups, with the p-value being far below the conventional significance threshold of 0.05. The negative t-statistic indicates that the mean of the male group is lower than that of the female group. The 95% confidence interval for the difference in means further supports this conclusion.
+
+### Student's T-test
+
+If equal variances are assumed as the ratio of the two variances suggests that the magnitude of the differences is comparable. Under this assumption, the Student's t-test can be conducted. The results are as follows.
+
+```{r}
+#| code-fold: true
+t.test(male, female, alternative='two.sided', paired=FALSE, var.equal=TRUE)
+```
+
+The resulting p-value is less than the significance level of 0.05, indicating that the mean lengths of male and female Northern shrimp are significantly different, as determined by the first test.
+
+### T-test verification
+
+The Welch's t-test will be manually calculated in the code block below to verify the findings.
+
+```{r}
+#| code-fold: true
+# sample means
+xbar_m <- mean(male)
+xbar_f <- mean(female)
+# standard deviations
+stdv_m <- sd(male)
+stdv_f <- sd(female)
+# sample sizes
+n_m <- length(male)
+n_f <- length(female)
+
+# test statistics
+tprime <- (xbar_m-xbar_f)/sqrt(stdv_m^2/n_m + stdv_f^2/n_f)
+# reduced number of degrees of freedom
+sxm <- (stdv_m^2/n_m)
+sxf <- (stdv_f^2/n_f)
+
+vprime <- (sxm+sxf)^2 / 
+  ( ( sxm^2 / (n_m-1) ) + ( (sxf^2 / (n_f-1)) ) )
+
+pvalue <- 2*pt(tprime, vprime)
+
+# confidence interval 
+alpha=0.05
+CI <- c((xbar_m - xbar_f) + qt(alpha/2, vprime)*sqrt(sxm + sxf),
+(xbar_m - xbar_f) - qt(alpha/2, vprime)*sqrt(sxm + sxf)) 
+```
+
+The manually calculated results are consistent with the t-test findings. The statistics results from the manual calculation are listed below.
+
+T-statistics: `r round(tprime, 3)`
+
+Degrees of freedom v' : `r round(vprime, 1)`
+
+P value: `r pvalue`
+
+Confidence Interval: `r CI`
+
+### ANOVA
+
+If the `Unknown` category is also included and a statistical test is conducted to test for the difference across three or more categories, an ANOVA (Analysis of Variance) is appropriate. There is one independent factor `LENGTH` with multiple levels (groups) `SEX` and the means between these groups are compared.
+
+-   Null Hypothesis (H₀): There is no significant difference between the means of the groups.
+
+-   Alternative Hypothesis (H~A~): At least one group mean is different from the others.
+
+A boxplot with the three categories is generated and an ANOVA test is conducted. The results are as follows.
+
+```{r}
+#| code-fold: true
+shrimpy2 <- shrimp |>
+  select(ID, SEX, LENGTH, INDWT, MATURITY) |>
+  filter(SEX == 1 | SEX == 2 | SEX == 0) |>
+  mutate(
+    SEX = case_when(
+      SEX==0 ~'Unknown',
+      SEX==1 ~'Male',
+      SEX==2 ~'Female',
+      TRUE ~ NA_character_
+      ),
+    SEX=factor(SEX, levels = c('Male', 'Female', 'Unknown'))
+    )|>
+  drop_na()
+
+shrimpy2 |>
+  ggplot(aes(SEX, LENGTH, fill=SEX)) +
+  geom_boxplot(alpha=0.5) +
+  labs(
+    title='Boxplot of Northern shrimp lengths according to SEX'
+  )
+
+aov_res <- aov(LENGTH~SEX, shrimpy2)
+summary(aov_res)
+```
+
+The resulting p-value is far less than the significant value of 0.05. Therefore, the null hypothesis is rejected. The means between the three groups are not the same. The means square error (MSE) is 220678, which suggest there is more variation within the groups.
+
+### Levene's Test
+
+An assumption was made that the new subdataset, which includes a third `SEX`category, has equal variance (based on the variance ratio above) and is normally distributed (due to the Central Limit Theorem). As a result, an ANOVA test was conducted. However, to verify the accuracy of the equal variance assumption, a Levene's Test was performed to assess homoscedasticity.
+
+-   Null Hypothesis (H₀): The variances across the groups are equal.
+
+-   Alternative Hypothesis (H~A~): The variances across the groups are not equal.
+
+```{r}
+#| code-fold: true
+leveneTest(LENGTH~SEX, shrimpy2)
+```
+
+Given the p-value \< 0.05, the null hypothesis is rejected. The variances are not equal across all groups.
+
+This nullifies the ANOVA test previously conducted.
+
+# Discussion
+
+The mean lengths of male and female Northern shrimp are significantly different. The null hypothesis, stating that the mean lengths of male and female Northern shrimp are equal, is rejected based on the results of the Welch’s two-sample t-test.
+
+Both the Student's t-test and Welch's t-test were performed on the test and both came to the same conclusion. Between the two t-tests, the Welch's t-test is more robust because it does not assume equal variances. In real-world situations, equal variances are not assumed. Welch's t-test is preferred as a more reliable statistical test when comparing the means between two samples.
+
+The Analysis of Variance (ANOVA) was performed on the a subdataset that included the third `SEX` category but upon closer inspection with a Levene's test, it was nullified because the equal variance assumption was no longer valid.
+
+The length of Northern shrimp serves as a useful indicator of sex and may also be utilized to assess the health of the population for fisheries management purposes, particularly in efforts to rebuild shrimp stocks. This information could be valuable for resource managers, as it can inform recommendations such as optimal net mesh sizes that allow immature shrimp to escape and mature.
+
+While a fishing moratorium is in place along the American eastern seaboard, Northern shrimp in Eastern Canada are classified as a sustainable seafood option \[6\], with concerns primarily focused on the environmental impact of bottom trawling. Given that Eastern Canada is located at a higher latitude and its waters are influenced by the Beaufort Gyre from the Arctic, further research incorporating ocean temperature data alongside Northern shrimp data could provide valuable insights into whether ocean temperature affects the growth of Northern shrimp—specifically, whether length as an indicator of maturity supports the sustainability of a robust population.
+
+### Limitations
+
+The Welch's t-test was conducted under the assumption that male and female Northern shrimp populations are distinct. However, Northern shrimp are protandrous hermaphrodites, beginning life as males and later transforming into females. As a result, the sex of the shrimp influences its length. Given this biological characteristic, the two-sample t-test may not fully capture the complexity of the hypothesis, as it assumes independent male and female groups. As such, the results of this research should not be used to inform recommendations by resource managers as yet.
+
+### Future Directions
+
+To build on the current findings, further investigations are needed to address the limitations outlined above. Specifically, future studies could take into account the protandrous hermaphroditic nature of Northern shrimp by considering how sex transition might influence the observed lengths. Additionally, expanding the sample size across regions (depths) or seasons could provide a more robust understanding of the relationship between shrimp size, sex, and environmental factors. Further investigation into relationships between maturity and length could yield insights to understand how length impacts maturity.
+
+Moreover, refining the methodology by employing more advanced statistical techniques, such as mixed-effects models (e.g. Tukey test, two-factor ANOVA), would allow for a more nuanced analysis of the variability within populations and the potential impact of other factors on shrimp length.
+
+### Additional Research Questions
+
+1.  Is length of Northern shrimp a reliable indicator of maturity in populations exposed to varying environmental conditions in the Gulf of Maine?
+2.  How is the growth rate affected by shrimp undergoing sex transition at different life stages? Or by changing conditions such as ocean temperatures and salinity?
+3.  Do fishing pressures impact the growth and reproductive success of Northern shrimp?
+
+These additional research questions can inform future data collection metrics and to corroborate with existing oceanography data such bathymetry, meteorological information to gain useful insights to assess Northern shrimp fisheries management.
+
+# References
+
+\[1\] Northeast Fisheries Science Center, 2025: Shrimp Survey Data, https://www.fisheries.noaa.gov/species/atlantic-northern-shrimp
+
+\[2\] Chang H. The impacts of climate change on the gulf of maine northern shrimp (pandalus borealis) distribution, reproduction, and life. \[Order No. 28989444\]. The University of Maine; 2021.
+
+\[3\] Jorde, P.E., Søvik, G., Westgaard, J.-I., Albretsen, J., André, C., Hvingel, C., Johansen, T., Sandvik, A.D., Kingsley, M. and Jørstad, K.E. (2015), Genetically distinct populations of northern shrimp,*Pandalus borealis*, in the North Atlantic: adaptation to different temperatures as an isolation factor. Mol Ecol, 24: 1742-1757.<https://doi.org/10.1111/mec.13158>
+
+\[4\] Atlantic States Marine Fisheries Commission, 2025: Northern Shrimp https://asmfc.org/species/northern-shrimp/
+
+\[5\] Northeast Fisheries Science Center, 2025: Shrimp Survey Data, https://www.fisheries.noaa.gov/inport/item/25087
+
+\[6\] Oceana Canada, 2025: Northern Shrimp, https://oceana.ca/en/marine-life/northern-shrimp/
